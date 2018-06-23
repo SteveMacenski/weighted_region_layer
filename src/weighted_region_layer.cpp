@@ -58,6 +58,7 @@ void WeightedRegionLayer::onInitialize()
 /*****************************************************************************/
 {
   current_ = true;
+  _got_map = false;
   default_value_ = costmap_2d::NO_INFORMATION;
   matchSize();
   _global_frame = layered_costmap_->getGlobalFrameID();
@@ -145,6 +146,8 @@ void WeightedRegionLayer::MapCallback( \
                               const map_msgs::OccupancyGridUpdateConstPtr& msg)
 /*****************************************************************************/
 {
+  _got_map = true;
+  _map_frame = msg->header.frame_id;
   ChangeWeightedRegionsFile();
   return;
 }
@@ -170,7 +173,7 @@ void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, \
                                        double* max_y)
 /*****************************************************************************/
 {
-  if (!enabled_)
+  if (!enabled_ || !_got_map)
   {
     return;
   }
@@ -197,7 +200,7 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
                                     int min_i, int min_j, int max_i, int max_j)
 /*****************************************************************************/
 {
-  if (!enabled_)
+  if (!enabled_ || !_got_map)
   {
     return;
   }
@@ -213,7 +216,7 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
     tf::StampedTransform transform;
     try
     {
-      tf_->lookupTransform("/map", _global_frame, ros::Time(0), transform); // TODO all else waits on getting a map before else to get frame ID
+      tf_->lookupTransform(_map_frame, _global_frame, ros::Time(0), transform);
     }
     catch (tf::TransformException ex)
     {

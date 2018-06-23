@@ -65,13 +65,10 @@
 TODOs
   - rviz plugin for marking areas and saving to file
     - stores all the stuff until ready
-
-  - launch with params
-
-
-  Current out side requirements
-    - if you want updates, you need to be updating a parameter
-    
+    -  (issue is moving without marking)interactive marker with a dial for size, on diamater you can draag it around and the space it was over is recorded
+    - or publish point 
+    - something you click a button starts, when you release done, lets you remove what you did if you Fed up
+    - 
 
 */
 
@@ -120,8 +117,8 @@ private:
   }
 
   ros::Subscriber _map_sub;
-  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame;
-  bool _enable_param_updates;
+  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame;
+  bool _enable_param_updates, _got_map;
   ros::NodeHandle _nh;
 };
 
