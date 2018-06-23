@@ -38,9 +38,6 @@
 
 #include <weighted_region_layer/weighted_region_layer.hpp>
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(weighted_region_layer::WeightedRegionLayer, costmap_2d::Layer)
-
 namespace weighted_region_layer
 {
 
@@ -48,68 +45,278 @@ namespace weighted_region_layer
 WeightedRegionLayer::WeightedRegionLayer()
 /*****************************************************************************/
 {
+}
 
+/*****************************************************************************/
+WeightedRegionLayer::~WeightedRegionLayer()
+/*****************************************************************************/
+{
 }
 
 /*****************************************************************************/
 void WeightedRegionLayer::onInitialize()
 /*****************************************************************************/
 {
-  ros::NodeHandle nh("~/" + name_);
   current_ = true;
   default_value_ = costmap_2d::NO_INFORMATION;
   matchSize();
+  _global_frame = layered_costmap_->getGlobalFrameID();
+
+  ROS_INFO("Initializing the WeightedRegionLayer as %s", name_.c_str());
+  ros::NodeHandle _nh("~/" + name_);
+
+  _nh.param("map_topic", _map_topic, std::string("/map"));
+  _nh.param("enable_param_updates", _enable_param_updates, false);
+  _nh.param("wrl_parameter_name", _wrl_parameter_name, std::string("wrl_file"));
+
+  enabled_ = true;
+
+  if (_enable_param_updates)
+  {
+    _map_sub = _nh.subscribe(_map_topic, 1, \
+                                     &WeightedRegionLayer::MapCallback, this);
+    _nh.param(_wrl_parameter_name, _wrl_file_name, std::string("none"));    
+
+    ROS_INFO("WeightedRegionLayer: Enabling Parameter based updates with "
+             "parameter %s. Current parameter %s is %s.", 
+             _wrl_parameter_name.c_str(), _wrl_parameter_name.c_str(), 
+             _wrl_file_name.c_str());
+  }
+  else
+  {
+    ROS_WARN("WeightedRegionLayer: Param updates were not enabled."
+             " You may update the weighted region file using "
+             "the load file service.");
+    enabled_ = false;
+    return;
+  }
+
+  if (_wrl_file_name != std::string("none"))
+  {
+    if (IsFileValid(_wrl_file_name))
+    {
+      ReadFromFile(_wrl_file_name.c_str());
+    }
+    else
+    {
+      ROS_WARN("WeightedRegionLayer: %s is an invalid file name or path, "
+               "have you made a wrl file for this map yet? :).", \
+               _wrl_file_name.c_str());
+      enabled_ = false;
+    }
+    return;
+  }
+    
+  ROS_WARN("WeightedRegionLayer: No wrl file or parameters were specified. "
+           "Will not do anything until load file service is called.");
+  enabled_ = false;
+  return;
 }
 
+/*****************************************************************************/
+void WeightedRegionLayer::ChangeWeightedRegionsFile()
+/*****************************************************************************/
+{
+  if (_nh.getParam(_wrl_parameter_name, _wrl_file_name))
+  {
+    if (IsFileValid(_wrl_file_name.c_str()))
+    {
+      ReadFromFile(_wrl_file_name.c_str());
+      return;
+    }
+    else
+    {
+      ROS_WARN("WeightedRegionLayer: Failed to open file %s, does it exist?", \
+                                                       _wrl_file_name.c_str());
+    }
+  }
+  else
+  {
+    ROS_WARN("WeightedRegionLayer: Failed to get param %s, does it exist?", \
+                                                  _wrl_parameter_name.c_str());
+  }
+
+  enabled_ = false;
+  return;
+}
+
+/*****************************************************************************/
+void WeightedRegionLayer::MapCallback( \
+                              const map_msgs::OccupancyGridUpdateConstPtr& msg)
+/*****************************************************************************/
+{
+  ChangeWeightedRegionsFile();
+  return;
+}
 
 /*****************************************************************************/
 void WeightedRegionLayer::matchSize()
 /*****************************************************************************/
 {
-  Costmap2D* master = layered_costmap_->getCostmap();
-  resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(),
-            master->getOriginX(), master->getOriginY());
-}
-
-/*****************************************************************************/
-void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
-                                           double* min_y, double* max_x, double* max_y)
-/*****************************************************************************/
-{
-  if (!enabled_)
-    return;
-
-  double mark_x = robot_x + cos(robot_yaw), mark_y = robot_y + sin(robot_yaw);
-  unsigned int mx;
-  unsigned int my;
-  if(worldToMap(mark_x, mark_y, mx, my)){
-    setCost(mx, my, costmap_2d::LETHAL_OBSTACLE);
-  }
-  
-  *min_x = std::min(*min_x, mark_x);
-  *min_y = std::min(*min_y, mark_y);
-  *max_x = std::max(*max_x, mark_x);
-  *max_y = std::max(*max_y, mark_y);
-}
-
-/*****************************************************************************/
-void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                                          int max_j)
-/*****************************************************************************/
-{
-  if (!enabled_)
-    return;
-
-  for (int j = min_j; j < max_j; j++)
+  if (!layered_costmap_->isRolling())
   {
-    for (int i = min_i; i < max_i; i++)
+    Costmap2D* master = layered_costmap_->getCostmap();
+    resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), 
+              master->getResolution(),
+              master->getOriginX(), master->getOriginY());
+  }
+  return;
+}
+
+/*****************************************************************************/
+void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, \
+                                       double robot_yaw, double* min_x,
+                                       double* min_y, double* max_x, \
+                                       double* max_y)
+/*****************************************************************************/
+{
+  if (!enabled_)
+  {
+    return;
+  }
+
+  // TODO must set bounds to ... 
+  // do I need to update origin?
+  // gah
+
+  useExtraBounds(min_x, min_y, max_x, max_y);
+
+  // double wx, wy;
+
+  // mapToWorld(x_, y_, wx, wy);
+  // *min_x = std::min(wx, *min_x);
+  // *min_y = std::min(wy, *min_y);
+
+  // mapToWorld(x_ + width_, y_ + height_, wx, wy);
+  // *max_x = std::max(wx, *max_x);
+  // *max_y = std::max(wy, *max_y);
+}
+
+/*****************************************************************************/
+void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
+                                    int min_i, int min_j, int max_i, int max_j)
+/*****************************************************************************/
+{
+  if (!enabled_)
+  {
+    return;
+  }
+
+  if (!layered_costmap_->isRolling())
+  {
+    updateWithMax(master_grid, min_i, min_j, max_i, max_j);
+  }
+  else
+  {
+    unsigned int mx, my;
+    double wx, wy;
+    tf::StampedTransform transform;
+    try
     {
-      int index = getIndex(i, j);
-      if (costmap_[index] == costmap_2d::NO_INFORMATION)
-        continue;
-      master_grid.setCost(i, j, costmap_[index]); 
+      tf_->lookupTransform("/map", _global_frame, ros::Time(0), transform); // TODO all else waits on getting a map before else to get frame ID
+    }
+    catch (tf::TransformException ex)
+    {
+      ROS_ERROR("%s", ex.what());
+      return;
+    }
+    for (unsigned int i = min_i; i < max_i; ++i)
+    {
+      for (unsigned int j = min_j; j < max_j; ++j)
+      {
+        layered_costmap_->getCostmap()->mapToWorld(i, j, wx, wy);
+        tf::Point p(wx, wy, 0);
+        p = transform(p);
+        if (worldToMap(p.x(), p.y(), mx, my))
+        {
+          master_grid.setCost(i, j, std::max(getCost(mx, my), 
+                              master_grid.getCost(i, j)));
+        }
+      }
     }
   }
 }
 
+/*****************************************************************************/
+void WeightedRegionLayer::WriteToFile(const std::string& filename)
+/*****************************************************************************/
+{
+  std::string name(filename + ".wrl"); //TODO de/serialization
+  std::ofstream file{name.c_str()};
+  boost::archive::text_oarchive oa{file};
+
+  std::string s( reinterpret_cast< char const* >(costmap_) ) ;
+  oa << s;
+  return;
+}
+
+/*****************************************************************************/
+void WeightedRegionLayer::ReadFromFile(const std::string& filename)
+/*****************************************************************************/
+{
+  try
+  {
+    std::string name(filename + ".wrl");
+    std::ifstream ifs(name.c_str());
+    boost::archive::text_iarchive ia(ifs);
+    std::string costmap_out;
+    if (ifs.good())
+    {
+      ia >> costmap_out;
+      costmap_ = reinterpret_cast<unsigned char*>(const_cast<char*>(costmap_out.c_str()));
+      enabled_ = true;
+      ROS_INFO("WeightedRegionLayer: Deserialized file correctly!");
+    }
+
+  return;
+  }
+  catch (...)
+  {
+    enabled_ = false;
+    return;
+  }
+}
+
+/*****************************************************************************/
+bool WeightedRegionLayer::LoadFileService( \
+                 weighted_region_layer::LoadWeightedRegionFile::Request& req, 
+                 weighted_region_layer::LoadWeightedRegionFile::Response& resp)
+/*****************************************************************************/
+{
+  _nh.param(_wrl_parameter_name, req.filename);
+  ChangeWeightedRegionsFile();
+  resp.status = true;
+  return true;
+}
+
+
+/*****************************************************************************/
+bool WeightedRegionLayer::SaveFileService( \
+                 weighted_region_layer::SaveWeightedRegionFile::Request& req, 
+                 weighted_region_layer::SaveWeightedRegionFile::Response& resp)
+/*****************************************************************************/
+{
+  if (IsFileValid(req.filename))
+  {
+    if (req.overwrite)
+    {
+      WriteToFile(req.filename);
+    }
+    else
+    {
+      ROS_WARN("WeightedRegionLayer: filename %s exists and you didn't"
+               " enable overwrite!", req.filename.c_str());
+      return true;
+    }
+  }
+  else
+  {
+    WriteToFile(req.filename); 
+  }
+  return true;
+}
+
 } // end namespace
+
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(weighted_region_layer::WeightedRegionLayer, costmap_2d::Layer)

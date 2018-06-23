@@ -39,21 +39,55 @@
 #ifndef WEIGHTED_REGION_LAYER_H_
 #define WEIGHTED_REGION_LAYER_H_
 
+// ROS
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
+#include <costmap_2d/costmap_layer.h>
+#include <costmap_2d/footprint.h>
+// STL
+#include <vector>
+#include <string>
+#include <iostream>
+#include <time.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fstream>
+// msgs
+#include <weighted_region_layer/LoadWeightedRegionFile.h>
+#include <weighted_region_layer/SaveWeightedRegionFile.h>
+#include <map_msgs/OccupancyGridUpdate.h>
+// Boost 
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/string.hpp>
+/*
+TODOs
+  - rviz plugin for marking areas and saving to file
+    - stores all the stuff until ready
+
+  - launch with params
+
+
+  Current out side requirements
+    - if you want updates, you need to be updating a parameter
+    
+
+*/
 
 namespace weighted_region_layer
 {
 
-class WeightedRegionLayer : public costmap_2d::Layer, public costmap_2d::Costmap2D
+class WeightedRegionLayer : public costmap_2d::CostmapLayer
 {
+
 public:
   WeightedRegionLayer();
+  ~WeightedRegionLayer();
 
+  // Necessary costmap_2d evils
   virtual void onInitialize();
-  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
-                             double* max_y);
+  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x, double* max_y);
   virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
   virtual void matchSize();
@@ -64,6 +98,33 @@ public:
 
 private:
 
+  void ChangeWeightedRegionsFile();
+
+  // Callbacks
+  void MapCallback(const map_msgs::OccupancyGridUpdateConstPtr& msg);
+  bool SaveFileService( \
+                 weighted_region_layer::SaveWeightedRegionFile::Request& req, 
+                 weighted_region_layer::SaveWeightedRegionFile::Response& resp);
+  bool LoadFileService( \
+                 weighted_region_layer::LoadWeightedRegionFile::Request& req, 
+                 weighted_region_layer::LoadWeightedRegionFile::Response& resp);
+
+  // Functional IO
+  void WriteToFile(const std::string& filename);
+  void ReadFromFile(const std::string& filename);
+
+  inline bool IsFileValid(const std::string& name)
+  {
+    struct stat buffer;
+    return (stat (name.c_str(), &buffer) == 0); 
+  }
+
+  ros::Subscriber _map_sub;
+  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame;
+  bool _enable_param_updates;
+  ros::NodeHandle _nh;
 };
-}
+
+} // end namespace
+
 #endif
