@@ -33,82 +33,37 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Steve Macenski (stevenmacenski@gmail.com)
+ * Purpose: Allow for weighted regions for traversal to be easily used
  *********************************************************************/
 
-#include <weighted_region_layer/weighted_region_layer.hpp>
+#ifndef WEIGHTED_REGION_LAYER_H_
+#define WEIGHTED_REGION_LAYER_H_
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(weighted_region_layer::WeightedRegionLayer, costmap_2d::Layer)
+#include <ros/ros.h>
+#include <costmap_2d/layer.h>
+#include <costmap_2d/layered_costmap.h>
 
 namespace weighted_region_layer
 {
 
-/*****************************************************************************/
-WeightedRegionLayer::WeightedRegionLayer()
-/*****************************************************************************/
+class WeightedRegionLayer : public costmap_2d::Layer, public costmap_2d::Costmap2D
 {
+public:
+  WeightedRegionLayer();
 
+  virtual void onInitialize();
+  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
+                             double* max_y);
+  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+
+  virtual void matchSize();
+
+  virtual void reset(void);
+  virtual void activate(void);
+  virtual void deactivate(void);
+
+private:
+
+};
 }
-
-/*****************************************************************************/
-void WeightedRegionLayer::onInitialize()
-/*****************************************************************************/
-{
-  ros::NodeHandle nh("~/" + name_);
-  current_ = true;
-  default_value_ = costmap_2d::NO_INFORMATION;
-  matchSize();
-}
-
-
-/*****************************************************************************/
-void WeightedRegionLayer::matchSize()
-/*****************************************************************************/
-{
-  Costmap2D* master = layered_costmap_->getCostmap();
-  resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(),
-            master->getOriginX(), master->getOriginY());
-}
-
-/*****************************************************************************/
-void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x,
-                                           double* min_y, double* max_x, double* max_y)
-/*****************************************************************************/
-{
-  if (!enabled_)
-    return;
-
-  double mark_x = robot_x + cos(robot_yaw), mark_y = robot_y + sin(robot_yaw);
-  unsigned int mx;
-  unsigned int my;
-  if(worldToMap(mark_x, mark_y, mx, my)){
-    setCost(mx, my, costmap_2d::LETHAL_OBSTACLE);
-  }
-  
-  *min_x = std::min(*min_x, mark_x);
-  *min_y = std::min(*min_y, mark_y);
-  *max_x = std::max(*max_x, mark_x);
-  *max_y = std::max(*max_y, mark_y);
-}
-
-/*****************************************************************************/
-void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                                          int max_j)
-/*****************************************************************************/
-{
-  if (!enabled_)
-    return;
-
-  for (int j = min_j; j < max_j; j++)
-  {
-    for (int i = min_i; i < max_i; i++)
-    {
-      int index = getIndex(i, j);
-      if (costmap_[index] == costmap_2d::NO_INFORMATION)
-        continue;
-      master_grid.setCost(i, j, costmap_[index]); 
-    }
-  }
-}
-
-} // end namespace
+#endif
