@@ -211,32 +211,8 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
   }
   else
   {
-    unsigned int mx, my;
-    double wx, wy;
-    tf::StampedTransform transform;
-    try
-    {
-      tf_->lookupTransform(_map_frame, _global_frame, ros::Time(0), transform);
-    }
-    catch (tf::TransformException ex)
-    {
-      ROS_ERROR("%s", ex.what());
-      return;
-    }
-    for (unsigned int i = min_i; i < max_i; ++i)
-    {
-      for (unsigned int j = min_j; j < max_j; ++j)
-      {
-        layered_costmap_->getCostmap()->mapToWorld(i, j, wx, wy);
-        tf::Point p(wx, wy, 0);
-        p = transform(p);
-        if (worldToMap(p.x(), p.y(), mx, my))
-        {
-          master_grid.setCost(i, j, std::max(getCost(mx, my), 
-                              master_grid.getCost(i, j)));
-        }
-      }
-    }
+    ROS_INFO_ONCE("WeightedRegionLayer: Only static costmaps does the weighed"
+                  "Region Layer make sense for.");
   }
 }
 
