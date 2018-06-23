@@ -148,6 +148,10 @@ void WeightedRegionLayer::MapCallback( \
 {
   _got_map = true;
   _map_frame = msg->header.frame_id;
+  _x = msg->x;
+  _y = msg->y;
+  _width = msg->width;
+  _height = msg->height;
   ChangeWeightedRegionsFile();
   return;
 }
@@ -178,21 +182,17 @@ void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, \
     return;
   }
 
-  // TODO must set bounds to ... 
-  // do I need to update origin?
-  // gah
-
   useExtraBounds(min_x, min_y, max_x, max_y);
 
-  // double wx, wy;
+  double wx, wy;
 
-  // mapToWorld(x_, y_, wx, wy);
-  // *min_x = std::min(wx, *min_x);
-  // *min_y = std::min(wy, *min_y);
+  mapToWorld(_x, _y, wx, wy);
+  *min_x = std::min(wx, *min_x);
+  *min_y = std::min(wy, *min_y);
 
-  // mapToWorld(x_ + width_, y_ + height_, wx, wy);
-  // *max_x = std::max(wx, *max_x);
-  // *max_y = std::max(wy, *max_y);
+  mapToWorld(_x + _width, _y + _height, wx, wy);
+  *max_x = std::max(wx, *max_x);
+  *max_y = std::max(wy, *max_y);
 }
 
 /*****************************************************************************/
@@ -211,7 +211,7 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
   }
   else
   {
-    ROS_INFO_ONCE("WeightedRegionLayer: Only static costmaps does the weighed"
+    ROS_ERROR_ONCE("WeightedRegionLayer: Only static costmaps does the weighed"
                   "Region Layer make sense for.");
   }
 }

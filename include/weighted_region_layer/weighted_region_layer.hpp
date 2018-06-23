@@ -117,9 +117,10 @@ private:
   }
 
   ros::Subscriber _map_sub;
+  ros::NodeHandle _nh;
   std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame;
   bool _enable_param_updates, _got_map;
-  ros::NodeHandle _nh;
+  double _x, _y, _width, _height;
 };
 
 } // end namespace
