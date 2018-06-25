@@ -33,78 +33,94 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Steve Macenski (stevenmacenski@gmail.com)
- * Purpose: Allow for weighted regions for traversal to be easily used
+ * Purpose: Allow for weighted regions to be visually defined
  *********************************************************************/
 
-#ifndef WEIGHTED_REGION_LAYER_H_
-#define WEIGHTED_REGION_LAYER_H_
+#ifndef MARKINGTOOL_H
+#define MARKINGTOOL_H
 
 // ROS
 #include <ros/ros.h>
-#include <costmap_2d/layer.h>
-#include <costmap_2d/layered_costmap.h>
-#include <costmap_2d/costmap_layer.h>
-#include <costmap_2d/footprint.h>
-// STL
-#include <vector>
-#include <string>
-#include <iostream>
-#include <time.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fstream>
 // msgs
+#include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/MapMetaData.h>
+#include <std_msgs/Header.h>
 #include <weighted_region_layer/LoadWeightedRegionFile.h>
 #include <weighted_region_layer/SaveWeightedRegionFile.h>
-#include <map_msgs/OccupancyGridUpdate.h>
-#include <nav_msgs/OccupancyGrid.h>
+// RVIZ
+#include <rviz/tool.h>
+#include <OGRE/OgreSceneNode.h>
+#include <OGRE/OgreSceneManager.h>
+#include <OGRE/OgreEntity.h>
+#include <rviz/viewport_mouse_event.h>
+#include <rviz/visualization_manager.h>
+#include <rviz/mesh_loader.h>
+#include <rviz/geometry.h>
+#include <rviz/properties/vector_property.h>
+// boost
+#include <boost/thread/thread.hpp>
+#include <boost/thread/mutex.hpp>
+
+ /*
+process:
+OFFLINE
+  1 start map server with map
+  2 load plugin
+  3 start tool
+  4 mark all relavent things
+  5 clear if needed
+  6 set level if needed
+  7 save file
+  8 in costmap_2d layer set file to load
+  9 load and use
+
+ONLINE
+  1 start robot 
+  2 make new map
+  3 share URI
+  4 edit
+  5 save
+  6 load
+ */
 
 namespace weighted_region_layer
 {
 
-class WeightedRegionLayer : public costmap_2d::CostmapLayer
+class MarkingTool: public rviz::Tool
 {
-
+Q_OBJECT
 public:
-  WeightedRegionLayer();
-  ~WeightedRegionLayer();
-
-  // Necessary costmap_2d evils
+  MarkingTool();
+  ~MarkingTool(); // called when '-' key is selected on Tool
   virtual void onInitialize();
-  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x, double* max_y);
-  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
-  virtual void matchSize();
+  virtual void activate(); // called with selecting tool or hotbutton
+  virtual void deactivate(); // called when a new tool is selected or hotkey out
+  virtual int processMouseEvent( rviz::ViewportMouseEvent& event ); // main function
+  bool GetWeightedMap(nav_msgs::OccupancyGrid& weighted_map);
+  bool ResetWeightedMap();
+  bool SetMarkLevel(const int& level);
+  bool SetSize(const double& size);
 
 private:
-  // the "meat"
-  void ChangeWeightedRegionsFile();
+  void AddToWeighedMap( const Ogre::Vector3& position );
+  void PublishWeightedMap();
+  void NewMapCallback(const nav_msgs::OccupancyGrid& msg);
 
-  // Callbacks
-  void MapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
-  bool LoadFileService( \
-                 weighted_region_layer::LoadWeightedRegionFile::Request& req, 
-                 weighted_region_layer::LoadWeightedRegionFile::Response& resp);
-  bool SaveFileService( \
-                 weighted_region_layer::SaveWeightedRegionFile::Request& req, 
-                 weighted_region_layer::SaveWeightedRegionFile::Response& resp);
+  Ogre::SceneNode* brush_node_;
+  std::string mesh_;
 
-  // IO
-  void ReadFromFile(const std::string& filename);
-  void WriteToFile(const std::string& filename);
-  inline bool IsFileValid(const std::string& name)
-  {
-    struct stat buffer;
-    return (stat (name.c_str(), &buffer) == 0); 
-  }
-
+  ros::Publisher _weighed_map_pub;
   ros::Subscriber _map_sub;
-  ros::NodeHandle _nh;
-  ros::ServiceServer _save, _load;
-  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame;
-  bool _enable_param_updates, _got_map;
-  double _width, _height;
+  ros::Time _last_right;
+  int _num_wait, _level;
+  double _size;
+  nav_msgs::OccupancyGrid* _occ_map;
+  nav_msgs::MapMetaData _map_meta;
+  std_msgs::Header _map_header;
+
+  boost::mutex _map_lock;
 };
 
 } // end namespace
 
-#endif
+#endif // PLANT_FLAG_TOOL_H

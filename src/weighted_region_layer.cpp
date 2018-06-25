@@ -37,6 +37,7 @@
  *********************************************************************/
 
 #include <weighted_region_layer/weighted_region_layer.hpp>
+#include "src/serialization.cpp"
 
 namespace weighted_region_layer
 {
@@ -45,6 +46,11 @@ namespace weighted_region_layer
 WeightedRegionLayer::WeightedRegionLayer()
 /*****************************************************************************/
 {
+  ros::NodeHandle nh("~" + name_);
+  _save = nh.advertiseService("save_file", \
+                                  &WeightedRegionLayer::SaveFileService, this);
+  _load = nh.advertiseService("load_file", \
+                                  &WeightedRegionLayer::LoadFileService, this);
 }
 
 /*****************************************************************************/
@@ -59,7 +65,8 @@ void WeightedRegionLayer::onInitialize()
 {
   current_ = true;
   _got_map = false;
-  default_value_ = costmap_2d::NO_INFORMATION;
+  enabled_ = true;
+  costmap_ = NULL;
   matchSize();
   _global_frame = layered_costmap_->getGlobalFrameID();
 
@@ -68,9 +75,7 @@ void WeightedRegionLayer::onInitialize()
 
   _nh.param("map_topic", _map_topic, std::string("/map"));
   _nh.param("enable_param_updates", _enable_param_updates, false);
-  _nh.param("wrl_parameter_name", _wrl_parameter_name, std::string("wrl_file"));
-
-  enabled_ = true;
+  _nh.param("wrl_parameter_name",_wrl_parameter_name,std::string("wrl_file"));
 
   if (_enable_param_updates)
   {
@@ -88,7 +93,6 @@ void WeightedRegionLayer::onInitialize()
     ROS_WARN("WeightedRegionLayer: Param updates were not enabled."
              " You may update the weighted region file using "
              "the load file service.");
-    enabled_ = false;
     return;
   }
 
@@ -103,14 +107,12 @@ void WeightedRegionLayer::onInitialize()
       ROS_WARN("WeightedRegionLayer: %s is an invalid file name or path, "
                "have you made a wrl file for this map yet? :).", \
                _wrl_file_name.c_str());
-      enabled_ = false;
     }
     return;
   }
     
   ROS_WARN("WeightedRegionLayer: No wrl file or parameters were specified. "
            "Will not do anything until load file service is called.");
-  enabled_ = false;
   return;
 }
 
@@ -136,23 +138,35 @@ void WeightedRegionLayer::ChangeWeightedRegionsFile()
     ROS_WARN("WeightedRegionLayer: Failed to get param %s, does it exist?", \
                                                   _wrl_parameter_name.c_str());
   }
-
-  enabled_ = false;
   return;
 }
 
 /*****************************************************************************/
 void WeightedRegionLayer::MapCallback( \
-                              const map_msgs::OccupancyGridUpdateConstPtr& msg)
+                                    const nav_msgs::OccupancyGridConstPtr& msg)
 /*****************************************************************************/
 {
-  _got_map = true;
+  costmap_ = NULL; // new map, current information is invalid
+
+  if (!_got_map)
+  {
+    _got_map = true;
+  }
+
   _map_frame = msg->header.frame_id;
-  _x = msg->x;
-  _y = msg->y;
-  _width = msg->width;
-  _height = msg->height;
+  _width = msg->info.width;
+  _height = msg->info.height;
   ChangeWeightedRegionsFile();
+
+  // TODO find length of costmap_
+  // if (costmap_ != NULL && costmap_.size() != _width * _height)
+  // {
+  //   ROS_WARN("WeightedRegionLayer: Loaded weighted region "
+  //            "map size does not match current map, invalid. Use the load"
+  //            " service to change maps or this layer will not do anything.");
+  //   costmap_ = NULL;
+  // } 
+
   return;
 }
 
@@ -177,22 +191,12 @@ void WeightedRegionLayer::updateBounds(double robot_x, double robot_y, \
                                        double* max_y)
 /*****************************************************************************/
 {
-  if (!enabled_ || !_got_map)
+  if (!enabled_ || !_got_map || !costmap_)
   {
     return;
   }
 
   useExtraBounds(min_x, min_y, max_x, max_y);
-
-  double wx, wy;
-
-  mapToWorld(_x, _y, wx, wy);
-  *min_x = std::min(wx, *min_x);
-  *min_y = std::min(wy, *min_y);
-
-  mapToWorld(_x + _width, _y + _height, wx, wy);
-  *max_x = std::max(wx, *max_x);
-  *max_y = std::max(wy, *max_y);
 }
 
 /*****************************************************************************/
@@ -200,7 +204,7 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
                                     int min_i, int min_j, int max_i, int max_j)
 /*****************************************************************************/
 {
-  if (!enabled_ || !_got_map)
+  if (!enabled_ || !_got_map || !costmap_)
   {
     return;
   }
@@ -217,43 +221,30 @@ void WeightedRegionLayer::updateCosts(costmap_2d::Costmap2D& master_grid, \
 }
 
 /*****************************************************************************/
-void WeightedRegionLayer::WriteToFile(const std::string& filename)
-/*****************************************************************************/
-{
-  std::string name(filename + ".wrl"); //TODO de/serialization
-  std::ofstream file{name.c_str()};
-  boost::archive::text_oarchive oa{file};
-
-  std::string s( reinterpret_cast< char const* >(costmap_) ) ;
-  oa << s;
-  return;
-}
-
-/*****************************************************************************/
 void WeightedRegionLayer::ReadFromFile(const std::string& filename)
 /*****************************************************************************/
 {
   try
   {
     std::string name(filename + ".wrl");
-    std::ifstream ifs(name.c_str());
-    boost::archive::text_iarchive ia(ifs);
-    std::string costmap_out;
-    if (ifs.good())
-    {
-      ia >> costmap_out;
-      costmap_ = reinterpret_cast<unsigned char*>(const_cast<char*>(costmap_out.c_str()));
-      enabled_ = true;
-      ROS_INFO("WeightedRegionLayer: Deserialized file correctly!");
-    }
-
-  return;
+    serialization::Read(name);
+    ROS_INFO("WeightedRegionLayer: Deserialized file correctly!");
+    return;
   }
   catch (...)
   {
-    enabled_ = false;
+    costmap_ = NULL;
     return;
   }
+}
+
+/*****************************************************************************/
+void WeightedRegionLayer::WriteToFile(const std::string& filename)
+/*****************************************************************************/
+{
+  std::string name(filename + ".wrl");
+  serialization::Write(name);
+  return;
 }
 
 /*****************************************************************************/
@@ -267,7 +258,6 @@ bool WeightedRegionLayer::LoadFileService( \
   resp.status = true;
   return true;
 }
-
 
 /*****************************************************************************/
 bool WeightedRegionLayer::SaveFileService( \

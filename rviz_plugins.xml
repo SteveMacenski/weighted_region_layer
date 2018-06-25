@@ -1,0 +1,10 @@
+<library path="lib/libweighted_region_layer_rviz">
+  <class name="weighted_region_layer/MarkingTool" type="weighted_region_layer::MarkingTool"
+         base_class_type="rviz::Tool">
+    <description>Tool for marking regions for the weighted regions plugin. </description>
+  </class>
+  <class name="weighted_region_layer/MarkingPanel" type="weighted_region_layer::MarkingPanel"
+         base_class_type="rviz::Panel">
+    <description>Panel for operating tool and clearing/saving/loading. </description>
+  </class>
+</library>

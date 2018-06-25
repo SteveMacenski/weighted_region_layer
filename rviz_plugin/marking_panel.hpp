@@ -36,75 +36,82 @@
  * Purpose: Allow for weighted regions for traversal to be easily used
  *********************************************************************/
 
-#ifndef WEIGHTED_REGION_LAYER_H_
-#define WEIGHTED_REGION_LAYER_H_
+#ifndef COMMAND_PANEL_H
+#define COMMAND_PANEL_H
 
-// ROS
+// rviz / QT
+#ifndef Q_MOC_RUN
 #include <ros/ros.h>
-#include <costmap_2d/layer.h>
-#include <costmap_2d/layered_costmap.h>
-#include <costmap_2d/costmap_layer.h>
-#include <costmap_2d/footprint.h>
-// STL
-#include <vector>
-#include <string>
-#include <iostream>
-#include <time.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fstream>
-// msgs
+#include <rviz/panel.h>
+#endif
+#include <QPushButton>
+#include <QCheckBox>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <std_msgs/Bool.h>
+#include <rviz/tool_manager.h>
+#include <rviz/visualization_manager.h>
+#include <nav_msgs/OccupancyGrid.h>
+//STL
+#include <ctime>
+#include <stdlib.h>
+#include <stdio.h>
+// weighted zones layer
 #include <weighted_region_layer/LoadWeightedRegionFile.h>
 #include <weighted_region_layer/SaveWeightedRegionFile.h>
-#include <map_msgs/OccupancyGridUpdate.h>
-#include <nav_msgs/OccupancyGrid.h>
+#include "marking_tool.hpp"
+
+class QLineEdit;
+class QSpinBox;
+class QComboBox;
 
 namespace weighted_region_layer
 {
 
-class WeightedRegionLayer : public costmap_2d::CostmapLayer
+class MarkingPanel : public rviz::Panel
 {
-
+  Q_OBJECT
 public:
-  WeightedRegionLayer();
-  ~WeightedRegionLayer();
 
-  // Necessary costmap_2d evils
-  virtual void onInitialize();
-  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x, double* max_y);
-  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
-  virtual void matchSize();
+  MarkingPanel(QWidget *parent = 0);
+  ~MarkingPanel();
 
-private:
-  // the "meat"
-  void ChangeWeightedRegionsFile();
+public Q_SLOTS:
+protected Q_SLOTS:
+  void Start();
+  void Clear();
+  void Toggle();
+  void Save();
+  void SetLevel();
+  void Load();
+  void SetSize();
 
-  // Callbacks
-  void MapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
-  bool LoadFileService( \
-                 weighted_region_layer::LoadWeightedRegionFile::Request& req, 
-                 weighted_region_layer::LoadWeightedRegionFile::Response& resp);
-  bool SaveFileService( \
-                 weighted_region_layer::SaveWeightedRegionFile::Request& req, 
-                 weighted_region_layer::SaveWeightedRegionFile::Response& resp);
+protected:
+  QPushButton *btn_clear_;
+  QPushButton *btn_toggle_;
+  QPushButton *btn_save_;
+  QPushButton *btn_load_;
+  QPushButton *btn_setLevel_;
+  QPushButton *btn_setsize_;
+  QLineEdit   *name_;
+  QLineEdit   *load_;
+  QComboBox   *level_;
+  QComboBox   *size_;
 
-  // IO
-  void ReadFromFile(const std::string& filename);
-  void WriteToFile(const std::string& filename);
-  inline bool IsFileValid(const std::string& name)
-  {
-    struct stat buffer;
-    return (stat (name.c_str(), &buffer) == 0); 
-  }
+  rviz::Tool  *tool_;
+  MarkingTool *tool;
 
-  ros::Subscriber _map_sub;
-  ros::NodeHandle _nh;
-  ros::ServiceServer _save, _load;
-  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame;
-  bool _enable_param_updates, _got_map;
-  double _width, _height;
+  QHBoxLayout* hlayout1;
+  QHBoxLayout* hlayout2;
+  QHBoxLayout* hlayout3;
+  QHBoxLayout* hlayout4;
+  QVBoxLayout* layout1;
+
+  ros::ServiceClient _save, _load;
 };
 
-} // end namespace
+}  // end namespace
 
 #endif

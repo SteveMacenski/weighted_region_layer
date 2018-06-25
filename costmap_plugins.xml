@@ -1,4 +1,4 @@
-<library path="lib/libweighted_region_layer">
+<library path="lib/libweighted_region_layer_costmap">
   <class name="weighted_region_layer/WeightedRegionLayer" type="weighted_region_layer::WeightedRegionLayer" base_class_type="costmap_2d::Layer">
     <description>This is a plugin for weighting certain areas over others visually </description>
   </class>

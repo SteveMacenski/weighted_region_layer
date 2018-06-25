@@ -1,6 +1,6 @@
 string filename
 bool overwrite
-
+nav_msgs/OccupancyGrid grid
 ---
 
 bool status
