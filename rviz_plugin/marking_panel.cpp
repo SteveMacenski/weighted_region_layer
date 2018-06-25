@@ -236,7 +236,9 @@ void MarkingPanel::Save()
     ROS_WARN("MarkingPanel: Could not save using layer service, "
              "is it running? No worries, I'll just save locally instead.");
     std::string name = name_->text().toStdString() + std::string(".wrl");
-    serialization::Write(name);
+    weighted_region_layer::data_serial msg;
+    msg.data = grid.data;
+    serialization::Write(name, msg);
   }
 }
 

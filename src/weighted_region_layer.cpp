@@ -227,7 +227,13 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
   try
   {
     std::string name(filename + ".wrl");
-    serialization::Read(name);
+    weighted_region_layer::data_serial msg;
+    serialization::Read(name, msg);
+    memset(costmap_, 0, msg.data.size() * sizeof(unsigned char));
+    for (int i=0; i!=msg.data.size(); i++)
+    {
+      costmap_[i] = (char)msg.data[i];
+    }
     ROS_INFO("WeightedRegionLayer: Deserialized file correctly!");
     return;
   }
@@ -243,7 +249,12 @@ void WeightedRegionLayer::WriteToFile(const std::string& filename)
 /*****************************************************************************/
 {
   std::string name(filename + ".wrl");
-  serialization::Write(name);
+  weighted_region_layer::data_serial msg;
+  for (int i=0; i!=msg.data.size(); i++)
+  {
+    msg.data.push_back((int)costmap_[i]);
+  }
+  //serialization::Write(name);
   return;
 }
 

@@ -56,6 +56,7 @@
 // msgs
 #include <weighted_region_layer/LoadWeightedRegionFile.h>
 #include <weighted_region_layer/SaveWeightedRegionFile.h>
+#include <weighted_region_layer/data_serial.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
 

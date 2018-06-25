@@ -40,21 +40,45 @@
 #define SERIALIZATION_H_
 
 #include <ros/ros.h>
-#include <string>
+#include <weighted_region_layer/data_serial.h>
 
 namespace serialization
 {
 
-void Read(const std::string& filename)
+namespace ser = ros::serialization;
+
+void Read(const std::string& filename, weighted_region_layer::data_serial& msg)
 {
+  std::ofstream ofs(filename, std::ios::out|std::ios::binary);
+
+  uint32_t serial_size = ros::serialization::serializationLength(msg);
+  boost::shared_array<uint8_t> buffer(new uint8_t[serial_size]);
+  ser::OStream stream(buffer.get(), serial_size);
+  ser::serialize(stream, msg);
+
+  ofs.write((char*) buffer.get(), serial_size);
+  ofs.close();
   return;
 }
 
-void Write(const std::string& filename)
+void Write(const std::string& filename, weighted_region_layer::data_serial& msg)
 {
+  std::ifstream ifs(filename, std::ios::in|std::ios::binary);
+  ifs.seekg (0, std::ios::end);
+  std::streampos end = ifs.tellg();
+  ifs.seekg (0, std::ios::beg);
+  std::streampos begin = ifs.tellg();
+  uint32_t serial_size = end-begin;
+
+  boost::shared_array<uint8_t> buffer(new uint8_t[serial_size]); 
+  ifs.read((char*) buffer.get(), serial_size);
+
+  ros::serialization::IStream istream(buffer.get(), serial_size);
+  ros::serialization::deserialize(istream, msg);
+  ifs.close();
   return;
 }
 
-}
+} // end namespace
 
 #endif

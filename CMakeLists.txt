@@ -49,7 +49,10 @@ add_definitions(-DQT_NO_KEYWORDS)
 
 find_package(Boost REQUIRED system filesystem) 
 
-
+add_message_files(
+  FILES
+  data_serial.msg
+)
 add_service_files(
   FILES
   LoadWeightedRegionFile.srv
