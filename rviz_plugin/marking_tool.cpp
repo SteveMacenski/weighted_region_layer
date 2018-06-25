@@ -43,7 +43,7 @@ namespace weighted_region_layer
 /*****************************************************************************/
 MarkingTool::MarkingTool() : brush_node_( NULL ), _num_wait(0), 
                              _occ_map(new nav_msgs::OccupancyGrid()), 
-                             _level(255), _size(1.0)
+                             _level(255), _size(1.0), _got_map(false)
 /*****************************************************************************/
   
 {
@@ -54,13 +54,24 @@ MarkingTool::MarkingTool() : brush_node_( NULL ), _num_wait(0),
   _map_sub = nh.subscribe("/map", 1, &MarkingTool::NewMapCallback, this);
   _weighed_map_pub = nh.advertise<nav_msgs::OccupancyGrid>( \
                            "/weighted_region_layer/marking_tool/map", 1, true);
+
+  // TEST CASE WITHOUT MAP
+  // _occ_map->info.resolution = 0.05;
+  // _occ_map->info.width = 1000;
+  // _occ_map->info.height = 1000;
+  // _occ_map->info.origin.position.x = 0.0;
+  // _occ_map->info.origin.position.y = 0.0;
+  // _occ_map->info.origin.orientation.w = 1.0;
+  // _occ_map->data.resize(1000*1000);
+  // _occ_map->header.frame_id = "/map";
+
+
 }
 
 /*****************************************************************************/
 MarkingTool::~MarkingTool()
 /*****************************************************************************/
 {
-  boost::mutex::scoped_lock lock(_map_lock);
   scene_manager_->destroySceneNode( brush_node_);
   brush_node_ = NULL;
   delete _occ_map;
@@ -71,6 +82,16 @@ MarkingTool::~MarkingTool()
 void MarkingTool::NewMapCallback(const nav_msgs::OccupancyGrid& msg)
 /*****************************************************************************/
 {
+  if (!_got_map)
+  {
+    _got_map = true;
+  }
+  _map_meta = msg.info;
+  _map_header = msg.header;
+  _occ_map->info = _map_meta;
+  _occ_map->header = _occ_map->header;
+  _occ_map->data.resize(_occ_map->info.width * _occ_map->info.height);
+
   ResetWeightedMap();
   PublishWeightedMap();
 }
@@ -118,7 +139,7 @@ void MarkingTool::deactivate()
 int MarkingTool::processMouseEvent( rviz::ViewportMouseEvent& event )
 /*****************************************************************************/
 {
-  if( !brush_node_ )
+  if( !brush_node_ || !_got_map )
   {
     return Render;
   }
@@ -133,7 +154,6 @@ int MarkingTool::processMouseEvent( rviz::ViewportMouseEvent& event )
 
     if( event.left() )
     {
-      ROS_INFO("pose: %f %f %f", intersection.x, intersection.y, intersection.z);
       AddToWeighedMap(intersection);
 
       _num_wait++;
@@ -165,13 +185,37 @@ void MarkingTool::AddToWeighedMap( const Ogre::Vector3& position )
 /*****************************************************************************/
 {
   boost::mutex::scoped_lock lock(_map_lock);
-  // add to off grid TODO
 
-  // use _level, _size
+  // find center pose in the occupancy grid frame
+  int mx = (int)((position.x - _map_meta.origin.position.x) / _map_meta.resolution);
+  int my = (int)((position.y - _map_meta.origin.position.y) / _map_meta.resolution);
 
-  // take max went over
+  if (mx < 0 || mx > _map_meta.width || my < 0 || my > _map_meta.height)
+  {
+    return;
+  }
+
+  // Find all occupancy grid cells inside radius
+  const double radius = _size * _map_meta.resolution;
+  std::vector<std::pair<int, int> > cells;
+  cells.push_back(std::pair<int,int>(mx,my));
+
+  // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+  // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+  // TODO
 
 
+
+
+  // for each take max of current value and _level
+  for (int i=0; i!=cells.size(); i++)
+  {
+    const int index = cells[i].second * _map_meta.width + cells[i].first;
+    if (_level > _occ_map->data[index])
+    {
+      _occ_map->data[index] = _level;
+    }
+  }
 }
 
 /*****************************************************************************/
@@ -195,12 +239,13 @@ bool MarkingTool::GetWeightedMap(nav_msgs::OccupancyGrid& weighted_map)
 bool MarkingTool::ResetWeightedMap()
 /*****************************************************************************/
 {
-  boost::mutex::scoped_lock lock(_map_lock);
+  _map_lock.lock();
   _occ_map = new nav_msgs::OccupancyGrid();
   _occ_map->info = _map_meta;
   _occ_map->header = _map_header;
   _occ_map->header.stamp = ros::Time::now();
-  PublishWeightedMap();
+  _occ_map->data.resize(_map_meta.width * _map_meta.height);
+  _map_lock.unlock();
   return true;
 }
 
@@ -222,7 +267,6 @@ bool MarkingTool::SetSize(const double& size)
 
   return true;
 }
-
 
 } // end namespace
 

@@ -60,6 +60,9 @@
 // boost
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
+// STL
+#include <vector>
+#include <utility>
 
  /*
 process:
@@ -100,10 +103,10 @@ public:
   bool ResetWeightedMap();
   bool SetMarkLevel(const int& level);
   bool SetSize(const double& size);
+  void PublishWeightedMap();
 
 private:
   void AddToWeighedMap( const Ogre::Vector3& position );
-  void PublishWeightedMap();
   void NewMapCallback(const nav_msgs::OccupancyGrid& msg);
 
   Ogre::SceneNode* brush_node_;
@@ -114,6 +117,7 @@ private:
   ros::Time _last_right;
   int _num_wait, _level;
   double _size;
+  bool _got_map;
   nav_msgs::OccupancyGrid* _occ_map;
   nav_msgs::MapMetaData _map_meta;
   std_msgs::Header _map_header;

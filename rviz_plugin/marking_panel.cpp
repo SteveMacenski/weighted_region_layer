@@ -172,6 +172,7 @@ void MarkingPanel::Clear()
 {
   Start();
   tool->ResetWeightedMap();
+  tool->PublishWeightedMap();
 }
 
 /*****************************************************************************/
