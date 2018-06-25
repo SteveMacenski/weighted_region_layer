@@ -55,7 +55,7 @@ MarkingTool::MarkingTool() : brush_node_( NULL ), _num_wait(0),
   _weighed_map_pub = nh.advertise<nav_msgs::OccupancyGrid>( \
                            "/weighted_region_layer/marking_tool/map", 1, true);
 
-  // TEST CASE WITHOUT MAP
+  //TEST CASE WITHOUT MAP
   // _occ_map->info.resolution = 0.05;
   // _occ_map->info.width = 1000;
   // _occ_map->info.height = 1000;
@@ -64,8 +64,9 @@ MarkingTool::MarkingTool() : brush_node_( NULL ), _num_wait(0),
   // _occ_map->info.origin.orientation.w = 1.0;
   // _occ_map->data.resize(1000*1000);
   // _occ_map->header.frame_id = "/map";
-
-
+  // _got_map = true;
+  // _map_meta = _occ_map->info;
+  // _map_header = _occ_map->header;
 }
 
 /*****************************************************************************/

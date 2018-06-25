@@ -237,7 +237,6 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
     {
       costmap_[i] = (char)msg.data[i];
     }
-    ROS_INFO("WeightedRegionLayer: Deserialized file correctly!");
     return;
   }
   catch (...)
@@ -249,16 +248,12 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
 }
 
 /*****************************************************************************/
-void WeightedRegionLayer::WriteToFile(const std::string& filename)
+void WeightedRegionLayer::WriteToFile(const std::string& filename, \
+                                      weighted_region_layer::data_serial& data)
 /*****************************************************************************/
 {
   std::string name(filename + ".wrl");
-  weighted_region_layer::data_serial msg;
-  for (int i=0; i!=msg.data.size(); i++)
-  {
-    msg.data.push_back((int)costmap_[i]);
-  }
-  serialization::Write(name, msg);
+  serialization::Write(name, data);
   return;
 }
 
@@ -284,7 +279,9 @@ bool WeightedRegionLayer::SaveFileService( \
   {
     if (req.overwrite)
     {
-      WriteToFile(req.filename);
+      weighted_region_layer::data_serial msg;
+      msg.data = req.grid.data;
+      WriteToFile(req.filename, msg);
     }
     else
     {
@@ -295,7 +292,9 @@ bool WeightedRegionLayer::SaveFileService( \
   }
   else
   {
-    WriteToFile(req.filename); 
+    weighted_region_layer::data_serial msg;
+    msg.data = req.grid.data;
+    WriteToFile(req.filename, msg); 
   }
   return true;
 }

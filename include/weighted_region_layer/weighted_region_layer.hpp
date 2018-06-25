@@ -91,7 +91,7 @@ private:
 
   // IO
   void ReadFromFile(const std::string& filename);
-  void WriteToFile(const std::string& filename);
+  void WriteToFile(const std::string& filename, weighted_region_layer::data_serial& data);
   inline bool IsFileValid(const std::string& name)
   {
     struct stat buffer;

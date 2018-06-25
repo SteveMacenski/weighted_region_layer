@@ -76,7 +76,7 @@ MarkingPanel::MarkingPanel(QWidget* parent) : rviz::Panel(parent), tool_(NULL)
   connect(btn_setsize_, SIGNAL(clicked()), this, SLOT(SetSize()));
 
   btn_load_ = new QPushButton(this);
-  btn_load_->setText("Load File");
+  btn_load_->setText("Load File to costmap layer");
   connect(btn_load_, SIGNAL(clicked()), this, SLOT(Load()));
 
   level_ = new QComboBox(this);
@@ -138,9 +138,9 @@ MarkingPanel::MarkingPanel(QWidget* parent) : rviz::Panel(parent), tool_(NULL)
 
   ros::NodeHandle nh;
   _save = nh.serviceClient<weighted_region_layer::SaveWeightedRegionFile>( \
-                  "/move_base/global_costmap/weighted_region_layer/save_file"); // TODO thse are p wrong
-  _load = nh.serviceClient<weighted_region_layer::LoadWeightedRegionFile>( \
                   "/move_base/global_costmap/weighted_region_layer/save_file");
+  _load = nh.serviceClient<weighted_region_layer::LoadWeightedRegionFile>( \
+                  "/move_base/global_costmap/weighted_region_layer/load_file");
 }
 
 /*****************************************************************************/
@@ -239,7 +239,15 @@ void MarkingPanel::Save()
     std::string name = name_->text().toStdString() + std::string(".wrl");
     weighted_region_layer::data_serial msg;
     msg.data = grid.data;
-    serialization::Write(name, msg);
+    try
+    {
+      serialization::Write(name, msg);
+    }
+    catch (...)
+    {
+      ROS_ERROR("MarkingPanel: Failed to save file %s! Is it valid?", \
+                 name.c_str());
+    }
   }
 }
 
@@ -251,9 +259,17 @@ void MarkingPanel::Load()
 
   weighted_region_layer::LoadWeightedRegionFile srv;
   srv.request.filename = load_->text().toStdString();
-  if(!_load.call(srv))
+  try
   {
-     ROS_ERROR("MarkingPanel: Failed to load from file, is service running?");
+    if(!_load.call(srv))
+    {
+      ROS_ERROR("MarkingPanel: Failed to load from file?");
+    }
+  }
+  catch (...)
+  {
+    ROS_ERROR("MarkingPanel: Failed to loaf file %s! Is it valid?", \
+              srv.request.filename.c_str());
   }
 }
 
