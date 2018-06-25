@@ -67,6 +67,8 @@ void WeightedRegionLayer::onInitialize()
   _got_map = false;
   enabled_ = true;
   costmap_ = NULL;
+  _costmap_size = 0;
+
   matchSize();
   _global_frame = layered_costmap_->getGlobalFrameID();
 
@@ -147,6 +149,7 @@ void WeightedRegionLayer::MapCallback( \
 /*****************************************************************************/
 {
   costmap_ = NULL; // new map, current information is invalid
+  _costmap_size = 0;
 
   if (!_got_map)
   {
@@ -158,14 +161,13 @@ void WeightedRegionLayer::MapCallback( \
   _height = msg->info.height;
   ChangeWeightedRegionsFile();
 
-  // TODO find length of costmap_
-  // if (costmap_ != NULL && costmap_.size() != _width * _height)
-  // {
-  //   ROS_WARN("WeightedRegionLayer: Loaded weighted region "
-  //            "map size does not match current map, invalid. Use the load"
-  //            " service to change maps or this layer will not do anything.");
-  //   costmap_ = NULL;
-  // } 
+  if (costmap_ != NULL && _costmap_size != _width*_height)
+  {
+    ROS_WARN("WeightedRegionLayer: Loaded weighted region "
+             "map size does not match current map, invalid. Use the load"
+             " service to change maps or this layer will not do anything.");
+    costmap_ = NULL;
+  } 
 
   return;
 }
@@ -230,6 +232,7 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
     weighted_region_layer::data_serial msg;
     serialization::Read(name, msg);
     memset(costmap_, 0, msg.data.size() * sizeof(unsigned char));
+    _costmap_size = msg.data.size();
     for (int i=0; i!=msg.data.size(); i++)
     {
       costmap_[i] = (char)msg.data[i];
@@ -239,6 +242,7 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
   }
   catch (...)
   {
+    _costmap_size = 0;
     costmap_ = NULL;
     return;
   }
@@ -254,7 +258,7 @@ void WeightedRegionLayer::WriteToFile(const std::string& filename)
   {
     msg.data.push_back((int)costmap_[i]);
   }
-  //serialization::Write(name);
+  serialization::Write(name, msg);
   return;
 }
 
