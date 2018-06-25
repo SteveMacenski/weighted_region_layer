@@ -87,7 +87,7 @@ set(SOURCE_FILES
 )
 
 add_library(${PROJECT_NAME}_costmap
-  src/weighted_region_layer.cpp
+  costmap_plugin/weighted_region_layer.cpp
 )
 
 add_dependencies(${PROJECT_NAME}_costmap ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
