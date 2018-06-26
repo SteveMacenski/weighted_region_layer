@@ -36,7 +36,7 @@
  * Author: Steve Macenski (stevenmacenski@gmail.com)
  *********************************************************************/
 
-#include <weighted_region_layer/weighted_region_layer.hpp>
+#include "weighted_region_layer.hpp"
 #include "src/serialization.cpp"
 
 namespace weighted_region_layer

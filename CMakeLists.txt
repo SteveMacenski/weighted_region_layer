@@ -64,13 +64,11 @@ generate_messages(
 )
 
 catkin_package(
-  INCLUDE_DIRS include
   LIBRARIES weighted_region_layer_costmap weighted_region_layer_rviz
   CATKIN_DEPENDS costmap_2d geometry_msgs map_msgs message_filters nav_msgs pcl_conversions pcl_ros pluginlib roscpp rospy sensor_msgs std_msgs std_srvs tf visualization_msgs message_generation
 )
 
 include_directories(
-  include
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIR}
 )
@@ -112,11 +110,6 @@ install(TARGETS ${PROJECT_NAME}_costmap ${PROJECT_NAME}_rviz
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY include/${PROJECT_NAME}/ param
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h**"
 )
 
 install(FILES
