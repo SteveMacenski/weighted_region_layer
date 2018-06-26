@@ -94,14 +94,14 @@ MarkingPanel::MarkingPanel(QWidget* parent) : rviz::Panel(parent), tool_(NULL)
 
   size_ = new QComboBox(this);
   stringsList.clear();
-  stringsList.append("0.1");  
+  stringsList.append("0.25");  
   stringsList.append("0.5");  
   stringsList.append("1.0");  
   stringsList.append("1.5");  
   stringsList.append("2.0");  
   stringsList.append("2.5");  
   stringsList.append("3");  
-  stringsList.append("10");  
+  stringsList.append("5");  
   size_->addItems(stringsList);
   size_->setCurrentIndex(-1);
 

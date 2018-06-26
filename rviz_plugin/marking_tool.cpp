@@ -56,17 +56,17 @@ MarkingTool::MarkingTool() : brush_node_( NULL ), _num_wait(0),
                            "/weighted_region_layer/marking_tool/map", 1, true);
 
   //TEST CASE WITHOUT MAP
-  // _occ_map->info.resolution = 0.05;
-  // _occ_map->info.width = 1000;
-  // _occ_map->info.height = 1000;
-  // _occ_map->info.origin.position.x = 0.0;
-  // _occ_map->info.origin.position.y = 0.0;
-  // _occ_map->info.origin.orientation.w = 1.0;
-  // _occ_map->data.resize(1000*1000);
-  // _occ_map->header.frame_id = "/map";
-  // _got_map = true;
-  // _map_meta = _occ_map->info;
-  // _map_header = _occ_map->header;
+  _occ_map->info.resolution = 0.05;
+  _occ_map->info.width = 1000;
+  _occ_map->info.height = 1000;
+  _occ_map->info.origin.position.x = 0.0;
+  _occ_map->info.origin.position.y = 0.0;
+  _occ_map->info.origin.orientation.w = 1.0;
+  _occ_map->data.resize(1000*1000);
+  _occ_map->header.frame_id = "/map";
+  _got_map = true;
+  _map_meta = _occ_map->info;
+  _map_header = _occ_map->header;
 }
 
 /*****************************************************************************/
@@ -101,7 +101,7 @@ void MarkingTool::NewMapCallback(const nav_msgs::OccupancyGrid& msg)
 void MarkingTool::onInitialize()
 /*****************************************************************************/
 {
-  mesh_ = "package://rviz/ogre_media/models/rviz_sphere.mesh"; //TODO color
+  mesh_ = "package://rviz/ogre_media/models/rviz_sphere.mesh";
 
   if( rviz::loadMeshFromResource( mesh_ ).isNull() )
   {
@@ -197,24 +197,47 @@ void MarkingTool::AddToWeighedMap( const Ogre::Vector3& position )
   }
 
   // Find all occupancy grid cells inside radius
-  const double radius = _size * _map_meta.resolution;
   std::vector<std::pair<int, int> > cells;
   cells.push_back(std::pair<int,int>(mx,my));
 
-  // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-  // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-  // TODO
+  const int leg_length = floor(_size / (2.*_map_meta.resolution));
+  const double leg_length_2 = (double)(leg_length*leg_length);
+  const int start_cell = my * _map_meta.width + mx;
 
+  // find bottom corner
+  int start_of_col = start_cell - leg_length;
+  int bottom_corner = start_of_col - leg_length*_map_meta.width;
 
-
-
-  // for each take max of current value and _level
-  for (int i=0; i!=cells.size(); i++)
+  // get all in width row
+  for (int j=0;j!=2.*leg_length;j++)
   {
-    const int index = cells[i].second * _map_meta.width + cells[i].first;
-    if (_level > _occ_map->data[index])
+    for (int i=0;i!=2.*leg_length;i++)
     {
-      _occ_map->data[index] = _level;
+      int cell = bottom_corner + i + j*_map_meta.width; 
+      if (true) // TODO check in valid space
+      {
+        int my_t = cell / _map_meta.width;
+        cells.push_back(std::pair<int,int>(cell - (my_t * _map_meta.width), my_t));
+      }
+      else
+      {
+        break;
+      }
+    }
+  }
+
+  for (int i=0;i!=cells.size();i++) 
+  {
+    int x = cells[i].first;
+    int y = cells[i].second;
+    if ((mx-x)*(mx-x) + (my-y)*(my-y) < leg_length_2)
+    { 
+      // take max of current value and _level
+      const int index = cells[i].second * _map_meta.width + cells[i].first;
+      if (_level > _occ_map->data[index])
+      {
+        _occ_map->data[index] = _level;
+      }
     }
   }
 }
