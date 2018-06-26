@@ -138,9 +138,9 @@ MarkingPanel::MarkingPanel(QWidget* parent) : rviz::Panel(parent), tool_(NULL)
 
   ros::NodeHandle nh;
   _save = nh.serviceClient<weighted_region_layer::SaveWeightedRegionFile>( \
-                  "/move_base/global_costmap/weighted_region_layer/save_file");
+                  "/move_base/WeightedRegionLayer/save_file");
   _load = nh.serviceClient<weighted_region_layer::LoadWeightedRegionFile>( \
-                  "/move_base/global_costmap/weighted_region_layer/load_file");
+                  "/move_base/WeightedRegionLayer/load_file");
 }
 
 /*****************************************************************************/

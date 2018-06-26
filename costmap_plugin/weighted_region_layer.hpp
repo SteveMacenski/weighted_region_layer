@@ -101,7 +101,7 @@ private:
   ros::Subscriber _map_sub;
   ros::NodeHandle _nh;
   ros::ServiceServer _save, _load;
-  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame;
+  std::string _map_topic, _wrl_parameter_name, _wrl_file_name, _global_frame, _map_frame, _prefix;
   bool _enable_param_updates, _got_map;
   double _width, _height;
   int _costmap_size;

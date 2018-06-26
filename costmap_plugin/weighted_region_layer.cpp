@@ -46,7 +46,7 @@ namespace weighted_region_layer
 WeightedRegionLayer::WeightedRegionLayer()
 /*****************************************************************************/
 {
-  ros::NodeHandle nh("~" + name_);
+  ros::NodeHandle nh("~" + name_ + std::string("WeightedRegionLayer"));
   _save = nh.advertiseService("save_file", \
                                   &WeightedRegionLayer::SaveFileService, this);
   _load = nh.advertiseService("load_file", \
@@ -68,6 +68,7 @@ void WeightedRegionLayer::onInitialize()
   enabled_ = true;
   costmap_ = NULL;
   _costmap_size = 0;
+  _prefix = "";
 
   matchSize();
   _global_frame = layered_costmap_->getGlobalFrameID();
@@ -78,6 +79,7 @@ void WeightedRegionLayer::onInitialize()
   _nh.param("map_topic", _map_topic, std::string("/map"));
   _nh.param("enable_param_updates", _enable_param_updates, false);
   _nh.param("wrl_parameter_name",_wrl_parameter_name,std::string("wrl_file"));
+  _nh.param("file_dir", _prefix, std::string(""));
 
   if (_enable_param_updates)
   {
@@ -100,9 +102,10 @@ void WeightedRegionLayer::onInitialize()
 
   if (_wrl_file_name != std::string("none"))
   {
-    if (IsFileValid(_wrl_file_name))
+    std::string filename = _prefix + _wrl_file_name + ".wrl";
+    if (IsFileValid(filename))
     {
-      ReadFromFile(_wrl_file_name.c_str());
+      ReadFromFile(filename.c_str());
     }
     else
     {
@@ -124,21 +127,22 @@ void WeightedRegionLayer::ChangeWeightedRegionsFile()
 {
   if (_nh.getParam(_wrl_parameter_name, _wrl_file_name))
   {
-    if (IsFileValid(_wrl_file_name.c_str()))
+    std::string filename = _prefix + _wrl_file_name + ".wrl";
+    if (IsFileValid(filename.c_str()))
     {
-      ReadFromFile(_wrl_file_name.c_str());
+      ReadFromFile(filename.c_str());
       return;
     }
     else
     {
       ROS_WARN("WeightedRegionLayer: Failed to open file %s, does it exist?", \
-                                                       _wrl_file_name.c_str());
+                                                             filename.c_str());
     }
   }
   else
   {
-    ROS_WARN("WeightedRegionLayer: Failed to get param %s, does it exist?", \
-                                                  _wrl_parameter_name.c_str());
+    ROS_WARN("WeightedRegionLayer: Failed to get param %s, does it exist?",   \
+                                                             filename.c_str());
   }
   return;
 }
@@ -228,9 +232,8 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
 {
   try
   {
-    std::string name(filename + ".wrl");
     weighted_region_layer::data_serial msg;
-    serialization::Read(name, msg);
+    serialization::Read(filename, msg);
     memset(costmap_, 0, msg.data.size() * sizeof(unsigned char));
     _costmap_size = msg.data.size();
     for (int i=0; i!=msg.data.size(); i++)
@@ -241,6 +244,8 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
   }
   catch (...)
   {
+    ROS_WARN("WeightedRegionLayer:"
+             " Failed to read file or convert into costmap_");
     _costmap_size = 0;
     costmap_ = NULL;
     return;
@@ -252,7 +257,7 @@ void WeightedRegionLayer::WriteToFile(const std::string& filename, \
                                       weighted_region_layer::data_serial& data)
 /*****************************************************************************/
 {
-  std::string name(filename + ".wrl");
+  std::string name(_prefix + filename + ".wrl");
   serialization::Write(name, data);
   return;
 }
@@ -263,7 +268,7 @@ bool WeightedRegionLayer::LoadFileService( \
                  weighted_region_layer::LoadWeightedRegionFile::Response& resp)
 /*****************************************************************************/
 {
-  _nh.param(_wrl_parameter_name, req.filename);
+  _nh.setParam(_wrl_parameter_name, req.filename);
   ChangeWeightedRegionsFile();
   resp.status = true;
   return true;
