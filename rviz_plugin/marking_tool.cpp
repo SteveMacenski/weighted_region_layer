@@ -214,7 +214,10 @@ void MarkingTool::AddToWeighedMap( const Ogre::Vector3& position )
     for (int i=0;i!=2.*leg_length;i++)
     {
       int cell = bottom_corner + i + j*_map_meta.width; 
-      if (true) // TODO check in valid space
+      if ( (cell%_map_meta.width) > 0 && // not too left
+           (cell%_map_meta.width) < _map_meta.width &&  // not too right
+            cell > 0 && // not too down
+            cell < (_map_meta.height*_map_meta.width) ) // not too up
       {
         int my_t = cell / _map_meta.width;
         cells.push_back(std::pair<int,int>(cell - (my_t * _map_meta.width), my_t));
