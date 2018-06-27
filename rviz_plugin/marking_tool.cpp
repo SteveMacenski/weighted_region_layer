@@ -91,7 +91,8 @@ void MarkingTool::NewMapCallback(const nav_msgs::OccupancyGrid& msg)
   _map_header = msg.header;
   _occ_map->info = _map_meta;
   _occ_map->header = _occ_map->header;
-  _occ_map->data.resize(_occ_map->info.width * _occ_map->info.height);
+  _occ_map->data.resize(_occ_map->info.width * _occ_map->info.height,
+                        costmap_2d::NO_INFORMATION);
 
   ResetWeightedMap();
   PublishWeightedMap();
@@ -271,7 +272,8 @@ bool MarkingTool::ResetWeightedMap()
   _occ_map->info = _map_meta;
   _occ_map->header = _map_header;
   _occ_map->header.stamp = ros::Time::now();
-  _occ_map->data.resize(_map_meta.width * _map_meta.height);
+  _occ_map->data.resize(_map_meta.width * _map_meta.height,\
+                        costmap_2d::NO_INFORMATION);
   _map_lock.unlock();
   return true;
 }

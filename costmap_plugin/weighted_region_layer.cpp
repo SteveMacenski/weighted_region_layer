@@ -73,7 +73,8 @@ void WeightedRegionLayer::onInitialize()
   matchSize();
   _global_frame = layered_costmap_->getGlobalFrameID();
 
-  ROS_INFO("Initializing the WeightedRegionLayer as %s", name_.c_str());
+  ROS_INFO("WeightedRegionLayer: Initializing the WeightedRegionLayer as %s", 
+                                                               name_.c_str());
   ros::NodeHandle _nh("~/" + name_);
 
   _nh.param("map_topic", _map_topic, std::string("/map"));
@@ -88,9 +89,10 @@ void WeightedRegionLayer::onInitialize()
     _nh.param(_wrl_parameter_name, _wrl_file_name, std::string("none"));    
 
     ROS_INFO("WeightedRegionLayer: Enabling Parameter based updates with "
-             "parameter %s. Current parameter %s is %s.", 
+             "parameter %s. Current parameter %s is %s. Prefix of files is %s"
+             " (which should include last slash).", 
              _wrl_parameter_name.c_str(), _wrl_parameter_name.c_str(), 
-             _wrl_file_name.c_str());
+             _wrl_file_name.c_str(), _prefix.c_str());
   }
   else
   {
@@ -142,7 +144,7 @@ void WeightedRegionLayer::ChangeWeightedRegionsFile()
   else
   {
     ROS_WARN("WeightedRegionLayer: Failed to get param %s, does it exist?",   \
-                                                             filename.c_str());
+                                                   _wrl_parameter_name.c_str());
   }
   return;
 }
@@ -152,6 +154,11 @@ void WeightedRegionLayer::MapCallback( \
                                     const nav_msgs::OccupancyGridConstPtr& msg)
 /*****************************************************************************/
 {
+  if (!_enable_param_updates)
+  {
+    return;
+  }
+
   costmap_ = NULL; // new map, current information is invalid
   _costmap_size = 0;
 
@@ -234,18 +241,24 @@ void WeightedRegionLayer::ReadFromFile(const std::string& filename)
   {
     weighted_region_layer::data_serial msg;
     serialization::Read(filename, msg);
-    memset(costmap_, 0, msg.data.size() * sizeof(unsigned char));
+    delete[] costmap_;
+    costmap_ = new unsigned char[(int)msg.data.size()];
+    memset(costmap_, default_value_, \
+           (int)msg.data.size()*sizeof(unsigned char));
+
     _costmap_size = msg.data.size();
     for (int i=0; i!=msg.data.size(); i++)
     {
       costmap_[i] = (char)msg.data[i];
     }
+    ROS_INFO("WeightedRegionLayer: Read costmap from file! File %s Message "
+             "was of size %i", filename.c_str(), (int)msg.data.size());
     return;
   }
   catch (...)
   {
-    ROS_WARN("WeightedRegionLayer:"
-             " Failed to read file or convert into costmap_");
+    ROS_WARN("WeightedRegionLayer: Failed to read file %s or "
+             "convert into costmap_", filename.c_str());
     _costmap_size = 0;
     costmap_ = NULL;
     return;
@@ -287,6 +300,8 @@ bool WeightedRegionLayer::SaveFileService( \
       weighted_region_layer::data_serial msg;
       msg.data = req.grid.data;
       WriteToFile(req.filename, msg);
+      ROS_INFO("WeightedRegionLayer: Successfully wrote %s to file!", 
+                                                        req.filename.c_str());
     }
     else
     {

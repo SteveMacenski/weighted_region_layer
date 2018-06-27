@@ -2,4 +2,4 @@ weighted_region_layer:
   map_topic: /map                  # Default /map
   enable_param_updates: true       # Default false
   wrl_parameter_name: /CURRENT_MAP # Default wrl_file
-  file_dir: /opt/jetson_maps/
+  file_dir: /opt/jetson_maps/      # Default none, directory wrl files are in with ending slash

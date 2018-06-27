@@ -88,6 +88,7 @@ MarkingPanel::MarkingPanel(QWidget* parent) : rviz::Panel(parent), tool_(NULL)
   stringsList.append("125");  
   stringsList.append("150");  
   stringsList.append("200");  
+  stringsList.append("254");  
   stringsList.append("255");  
   level_->addItems(stringsList);
   level_->setCurrentIndex(-1);
@@ -234,9 +235,10 @@ void MarkingPanel::Save()
 
   if(!_save.call(srv))
   {
-    ROS_WARN("MarkingPanel: Could not save using layer service, "
-             "is it running? No worries, I'll just save locally instead.");
     std::string name = name_->text().toStdString() + std::string(".wrl");
+    ROS_WARN("MarkingPanel: Could not save using layer service, "
+             "is it running? No worries, I'll just save locally"
+             " instead in current directory as %s.", name.c_str());
     weighted_region_layer::data_serial msg;
     msg.data = grid.data;
     try
@@ -248,6 +250,10 @@ void MarkingPanel::Save()
       ROS_ERROR("MarkingPanel: Failed to save file %s! Is it valid?", \
                  name.c_str());
     }
+  }
+  else
+  {
+    ROS_WARN("MarkingPanel: Saved wrl file to robot.");    
   }
 }
 

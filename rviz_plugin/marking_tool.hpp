@@ -41,6 +41,7 @@
 
 // ROS
 #include <ros/ros.h>
+#include <costmap_2d/cost_values.h>
 // msgs
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/MapMetaData.h>
